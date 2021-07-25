@@ -3,7 +3,7 @@ using HangFireLegacy.Services;
 
 namespace HangFireLegacy.Controllers
 {
-    [Route("values")]
+    [RoutePrefix("values")]
     public class ValuesController : ApiController
     {
         private readonly IRepository _repository;
@@ -13,6 +13,8 @@ namespace HangFireLegacy.Controllers
             _repository = repository;
         }
         // GET api/values
+        [Route("")]
+        [HttpGet]
         public object Get()
         {
             return new {Result = _repository.Foo()};

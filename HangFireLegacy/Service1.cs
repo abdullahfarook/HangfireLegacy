@@ -1,7 +1,4 @@
-﻿using System;
-using System.ServiceProcess;
-using Hangfire;
-using Hangfire.MemoryStorage;
+﻿using System.ServiceProcess;
 using Microsoft.Owin.Hosting;
 
 namespace HangFireLegacy

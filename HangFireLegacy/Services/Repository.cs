@@ -3,6 +3,10 @@ using HangFireLegacy.Data;
 
 namespace HangFireLegacy.Services
 {
+    public interface IRepository
+    {
+        string Foo();
+    }
     public class Repository : IRepository
     {
         private readonly HangFireLegacyContext _context;

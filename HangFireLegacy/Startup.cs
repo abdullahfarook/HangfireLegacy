@@ -1,15 +1,11 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using System.Web.Http;
-using Hangfire;
-using Hangfire.Storage.MySql;
 using HangFireLegacy.Data;
 using HangFireLegacy.Helpers;
 using HangFireLegacy.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Owin;
-using Unity;
-using Unity.Injection;
-using Unity.Lifetime;
-using GlobalConfiguration = Hangfire.GlobalConfiguration;
 
 namespace HangFireLegacy
 {
@@ -20,9 +16,12 @@ namespace HangFireLegacy
         {
             // Configure Web API for self-host. 
             var config = new HttpConfiguration();
-            var container = new UnityContainer();
-            ConfigureServices(container);
-            config.DependencyResolver = new UnityResolver(container);
+            //var container = new UnityContainer();
+            var services = new ServiceCollection();
+             ConfigureServices(services);
+             var provider = services.BuildServiceProvider();
+            //config.DependencyResolver = new UnityResolver(container);
+            config.DependencyResolver = new DependencyResolver(provider);
             //  Enable attribute based routing
             //  http://www.asp.net/web-api/overview/web-api-routing-and-actions/attribute-routing-in-web-api-2
             config.MapHttpAttributeRoutes();
@@ -32,30 +31,34 @@ namespace HangFireLegacy
                 routeTemplate: "api/{controller}/{id}",
                 defaults: new { id = RouteParameter.Optional }
             );
-            Configure(app,config);
+            Configure(app, provider);
+
+            app.UseWebApi(config);
         }
 
-        public void ConfigureServices(UnityContainer services)
+        public void ConfigureServices(ServiceCollection services)
         {
             var connectionString = ConfigurationManager.ConnectionStrings["mysql"].ConnectionString;
-            // Register dependencies
-            services.RegisterType<IRepository, Repository>();
-            //DbConfiguration.SetConfiguration(new MySqlEFConfiguration());
-            services.RegisterType<HangFireLegacyContext>(new PerResolveLifetimeManager(),new InjectionConstructor(connectionString));
-            
-            // HangFire
-            var options = new MySqlStorageOptions { TablesPrefix = "HangFire" };
-            var storage = new MySqlStorage(connectionString, options);
-            GlobalConfiguration.Configuration.UseStorage(storage);
-            GlobalConfiguration.Configuration.UseActivator(new ContainerJobActivator(services));
+            services.AddControllers();
+            services.AddScoped<IRepository, Repository>();
+            services.AddHttpClient<ITimeSlotService, TimeSlotService>(client =>
+            {
+                client.BaseAddress = new Uri(ConfigurationManager.AppSettings["ServiceUrl1"]);
+            });
+            services.AddHttpClient<IAgentLookupService, AgentLookupService>(client =>
+            {
+                client.BaseAddress = new Uri(ConfigurationManager.AppSettings["ServiceUrl2"]);
+            });
 
+            services.AddScoped(x=> new HangFireLegacyContext(connectionString));
+            //services.AddHangFire(connectionString,"HangFire");
+            
         }
 
-        public void Configure(IAppBuilder app, HttpConfiguration configuration)
+        public void Configure(IAppBuilder app, IServiceProvider provider)
         {
-            app.UseHangfireDashboard();
-            app.UseHangfireServer();
-            app.UseWebApi(configuration);
+            //app.UseHangFireService(provider);
+            //app.UseHangfireDashboard();
         }
     }
 }
